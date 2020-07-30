@@ -8,16 +8,17 @@ config <- list(
   price_levels=c(100, 90, 80, 60),
   lift=c(1.0, 1.3, 1.7, 2.8))
 
-init_state <- function(seed){
+init_state <- function(seed=NULL){
   # Use Java RNG for backwards compatibility.
+  seed <- `if`(is.null(seed), sample(1:1e4, 1), seed)
+  print(seed)
   .jinit()
   g <- new(J("java.util.Random"), .jlong(seed))
-  noise <- rerun(config $ n_weeks * config $ n_prices, g $ nextGaussian()) %>%
-    matrix(ncol=config $ n_weeks) %>% t
   mean_scale <- 0.7 * config $ max_capacity / config $ n_weeks
-  state <- list(noise=noise,
-                price_history=c(),
-                scale=rnorm(1) * 0.6 * mean_scale + mean_scale)
+  scale <- abs(g $ nextGaussian() * 0.6 * mean_scale + mean_scale)
+  noise <- (rerun(config $ n_weeks * config $ n_prices, g $ nextGaussian())
+    %>% matrix(ncol=config $ n_weeks) %>% t)
+  state <- list(noise=noise, price_history=c(), scale=scale)
   state $ max_revenue <- maximum_revenue(state)
   state
 }
@@ -28,7 +29,7 @@ rep_each <- function(x, each)
 eval_prices <- function(state, prices){
   list_modify(state, price_history=prices) %>%
     summarise_state %>%
-    `$`(Revenue) %>% max
+    `$`(revenue) %>% max
 }
 
 maximum_revenue <- function(state){
@@ -57,8 +58,8 @@ compute_demand <- function(state){
 is_season_over <- function(state){
   history <- summarise_state(state)
   (max(history $ t) >= config $ n_weeks
-    || min(history $ Inventory) <= 0
-    || min(history $ Price) <= min(config $ price_levels))
+    || min(history $ inventory) <= 0
+    || min(history $ price) <= min(config $ price_levels))
 }
 
 summarise_state <- function(state){
@@ -66,11 +67,11 @@ summarise_state <- function(state){
   demand <- c(0, compute_demand(state))
   cum_demand <- pmin(cumsum(demand), config $ max_capacity)
   inventory <- config $ max_capacity - cum_demand
-  revenue <- cumsum(prices * demand)
+  revenue <- cumsum(prices * pmin(demand, inventory))
   tibble(t=seq(0, length(demand) - 1),
-         Inventory=inventory,
-         Revenue=revenue,
-         Price=prices)
+         inventory=inventory,
+         revenue=revenue,
+         price=prices)
 }
 
 complete_state <- function(state){

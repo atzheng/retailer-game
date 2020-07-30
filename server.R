@@ -5,9 +5,9 @@ source("functions.R")
 server <- function(input, output){
   ## Initialization
   ## ------------------------------------
-  state <- do.call(reactiveValues, init_state(sample(1:1e4, 1)))
+  state <- do.call(reactiveValues, init_state())
+
   observeEvent(input $ reset, {
-#    shinyjs::enable("step")
     new_state <- init_state(as.integer(input $ seed))
     copy_list(new_state, state)
   })
@@ -43,7 +43,7 @@ server <- function(input, output){
       sprintf(paste(
         "The season is over! You earned $%s, out of $%s possible.",
         "Click Reset to try again."),
-        max(history() $ Revenue) %>% prettyNum(big.mark=","),
+        max(history() $ revenue) %>% prettyNum(big.mark=","),
         state $ max_revenue %>% prettyNum(big.mark=","))
     } else {
       "Welcome to the Retailer Game! Choose a price and click Step to simulate."
@@ -52,7 +52,7 @@ server <- function(input, output){
 
   output $ inventory_plot <- renderPlot({
     (history()
-      %>% ggplot(aes(t, Inventory))
+      %>% ggplot(aes(t, inventory))
       + theme_minimal()
       + geom_point()
       + geom_line()
@@ -65,7 +65,7 @@ server <- function(input, output){
 
   output $ revenue_plot <- renderPlot({
     (history()
-      %>% ggplot(aes(t, Revenue))
+      %>% ggplot(aes(t, revenue))
       + theme_minimal()
       + geom_point()
       + geom_line()
@@ -76,5 +76,10 @@ server <- function(input, output){
       + coord_cartesian(ylim=c(0, state $ max_revenue), xlim=c(0, config $ n_weeks)))
   })
 
-  output $ tbl <- renderDataTable(history())
+  output $ tbl <- renderDataTable(history()[-1, ])
+  output $ download <- downloadHandler(
+    filename = function() paste0("retailer-seed", input $ seed, ".csv"),
+    content = function(file)
+      write.csv(history()[-1, ], file, row.names = FALSE)
+  )
 }

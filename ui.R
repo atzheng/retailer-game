@@ -9,7 +9,8 @@ fluidPage(
     ##            choiceValues=c(100, 90, 80, 60),
     ##            choiceNames=c(0., 0.1, 0.2, 0.4)),
     actionButton("reset", "Reset"),
-    actionButton("step", "Step")),
+    actionButton("step", "Step"),
+    downloadButton("download", "Download")),
     mainPanel(fluidRow(column(6, plotOutput("inventory_plot")),
                        column(6, plotOutput("revenue_plot"))),
               dataTableOutput("tbl"))))
