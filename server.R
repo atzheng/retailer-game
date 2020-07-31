@@ -7,8 +7,16 @@ source("functions.R")
 server <- function(input, output, session){
   ## Initialization
   ## ------------------------------------
-  state <- do.call(reactiveValues, init_state())
+  # State variables
+  price_history <- reactiveVal(max(config $ price_levels))
+  scenario <- do.call(reactiveValues, init_scenario())
+
   timer <- reactiveVal(config $ decision_time)
+  observeEvent(input $ reset, {
+    timer(config $ decision_time)
+    price_history(max(config $ price_levels))
+    copy_list(init_scenario(input $ seed), scenario)
+  })
 
   observe({
     invalidateLater(1000, session)
@@ -17,29 +25,24 @@ server <- function(input, output, session){
     })
   })
 
-  observeEvent(input $ reset, {
-    new_state <- init_state(as.integer(input $ seed))
-    copy_list(new_state, state)
-    timer(config $ decision_time)
-  })
-
   output $ discount <- renderUI({
-    last_price <- state $ price_history [length(state $ price_history)]
+    last_price <- last(price_history())
     valid_prices <- keep(config $ price_levels, ~ .x <= last_price)
-    discount_pct <-
-      (max(config $ price_levels) - valid_prices) /
-      max(config $ price_levels)
+    discount_pct <- with(
+      config, (max(price_levels) - valid_prices) / max(price_levels))
     names(valid_prices) <- percent(discount_pct)
     radioButtons("price", "Discount", choices=valid_prices)
   })
 
   ## Event loop
   ## -------------------------------------
-  history <- reactive(summarise_state(state))
-  season_over <- reactive(is_season_over(state))
+  history <- reactive(summarise_state(scenario, price_history()))
+  season_over <- reactive(is_season_over(scenario, price_history()))
 
   observeEvent(input $ step, {
-    update_state(state, input $ price)
+    new_history <- update_history(
+      scenario, price_history(), input $ price)
+    price_history(new_history)
     timer(config $ decision_time)
   })
 
@@ -47,7 +50,9 @@ server <- function(input, output, session){
     timer()
     isolate({
       if (timer() == 0 && !season_over()){
-        update_state(state, input $ price)
+        new_history <- update_history(
+          scenario, price_history(), input $ price)
+        price_history(new_history)
         timer(config $ decision_time)
       }
     })
@@ -60,8 +65,10 @@ server <- function(input, output, session){
       sprintf(paste(
         "The season is over! You earned $%s, out of $%s possible.",
         "Click Reset to try again."),
-        max(history() $ revenue) %>% prettyNum(big.mark=",", scientific=FALSE),
-        maximum_revenue(state) %>% prettyNum(big.mark=",", scientific=FALSE))
+        max(history() $ revenue) %>%
+        prettyNum(big.mark=",", scientific=FALSE),
+        maximum_revenue(scenario) %>%
+        prettyNum(big.mark=",", scientific=FALSE))
     } else {
       sprintf("You have %d s to make a decision!", timer())
     }

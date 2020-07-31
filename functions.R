@@ -9,7 +9,7 @@ config <- list(
   decision_time=30,
   lift=c(1.0, 1.3, 1.7, 2.8))
 
-init_state <- function(seed=NULL){
+init_scenario <- function(seed=NULL){
   # Use Java RNG for backwards compatibility.
   seed <- `if`(is.null(seed), sample(1:1e4, 1), seed)
   .jinit()
@@ -18,26 +18,22 @@ init_state <- function(seed=NULL){
   scale <- abs(g $ nextGaussian() * 0.6 * mean_scale + mean_scale)
   noise <- (rerun(config $ n_weeks * config $ n_prices, g $ nextGaussian())
     %>% matrix(ncol=config $ n_weeks) %>% t)
-  state <- list(noise=noise, price_history=c(100), scale=scale)
-  state
+  list(noise=noise, scale=scale)
 }
 
 rep_each <- function(x, each)
   map2(x, each, ~ rep(.x, .y)) %>% do.call(c, .)
 
-eval_prices <- function(state, prices){
-  list_modify(state, price_history=prices) %>%
-    summarise_state %>%
-    `$`(revenue) %>% max
-}
+eval_prices <- function(scenario, prices)
+  summarise_state(scenario, prices) %>% `$`(revenue) %>% max
 
-maximum_revenue <- function(state){
+maximum_revenue <- function(scenario){
   (rerun(length(config $ price_levels), seq(0, config $ n_weeks - 1))
     %>% expand.grid
     %>% filter(rowSums(.) == config $ n_weeks - 1)
     %>% apply(1, function(x){
       with(config, c(max(price_levels), rep_each(price_levels, x))) %>%
-        eval_prices(state, .) })
+        eval_prices(scenario, .) })
     %>% max)
 }
 
@@ -45,26 +41,27 @@ compute_lift <- function(prices){
   config $ lift[match(prices, config $ price_levels)]
 }
 
-compute_demand <- function(state){
-  mean_demand <- compute_lift(state $ price_history) * state $ scale
-  noise <- state $ noise [seq_along(state $ price_history),
-                          match(state $ price_history,
-                                config $ price_levels)] %>%
+compute_demand <- function(scenario, price_history){
+  print(scenario)
+  mean_demand <- compute_lift(price_history) * scenario $ scale
+  noise <- scenario $ noise [seq_along(price_history),
+                             match(price_history,
+                                   config $ price_levels)] %>%
     as.matrix %>% diag %>% unlist
   pmax(mean_demand * 0.2 * noise + mean_demand, 0) %>% as.integer
 }
 
 
-is_season_over <- function(state){
-  history <- summarise_state(state)
+is_season_over <- function(scenario, price_history){
+  history <- summarise_state(scenario, price_history)
   (max(history $ t) >= config $ n_weeks
     || min(history $ inventory) <= 0
     || min(history $ price) <= min(config $ price_levels))
 }
 
-summarise_state <- function(state){
-  prices <- c(config $ price_levels[1], state $ price_history)
-  demand <- c(0, compute_demand(state))
+summarise_state <- function(scenario, price_history){
+  prices <- c(config $ price_levels[1], price_history)
+  demand <- c(0, compute_demand(scenario, price_history))
   cum_demand <- pmin(cumsum(demand), config $ max_capacity)
   inventory <- config $ max_capacity - cum_demand
   sales <- pmin(demand, dplyr::lag(inventory, default=config $ max_capacity))
@@ -77,18 +74,15 @@ summarise_state <- function(state){
          price=prices)
 }
 
-complete_state <- function(state){
-  T <- length(state $ price_history)
-  state $ price_history <- c(
-    state $ price_history,
-    rep(state $ price_history[T], config $ n_weeks - T))
-}
+extend <- function(x, n) c(x, rep(last(x), n - length(x)))
 
-update_state <- function(state, price){
-  if(!is_season_over(state)){
-    state $ price_history <- c(state $ price_history, as.numeric(price))
-    if(is_season_over(state)){
-      complete_state(state)
+update_history <- function(scenario, price_history, price){
+  if(!is_season_over(scenario, price_history)){
+    new_history <- c(price_history, as.numeric(price))
+    if(is_season_over(scenario, new_history)){
+      extend(new_history, config $ n_weeks)
+    } else {
+      new_history
     }
   }
 }
