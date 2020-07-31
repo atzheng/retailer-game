@@ -11,14 +11,13 @@ config <- list(
 init_state <- function(seed=NULL){
   # Use Java RNG for backwards compatibility.
   seed <- `if`(is.null(seed), sample(1:1e4, 1), seed)
-  print(seed)
   .jinit()
   g <- new(J("java.util.Random"), .jlong(seed))
   mean_scale <- 0.7 * config $ max_capacity / config $ n_weeks
   scale <- abs(g $ nextGaussian() * 0.6 * mean_scale + mean_scale)
   noise <- (rerun(config $ n_weeks * config $ n_prices, g $ nextGaussian())
     %>% matrix(ncol=config $ n_weeks) %>% t)
-  state <- list(noise=noise, price_history=c(), scale=scale)
+  state <- list(noise=noise, price_history=c(100), scale=scale)
   state $ max_revenue <- maximum_revenue(state)
   state
 }
@@ -51,7 +50,7 @@ compute_demand <- function(state){
                           match(state $ price_history,
                                 config $ price_levels)] %>%
     as.matrix %>% diag %>% unlist
-  pmax(mean_demand * 0.2 * noise + mean_demand, 0) %>% round
+  pmax(mean_demand * 0.2 * noise + mean_demand, 0) %>% as.integer
 }
 
 
@@ -67,10 +66,13 @@ summarise_state <- function(state){
   demand <- c(0, compute_demand(state))
   cum_demand <- pmin(cumsum(demand), config $ max_capacity)
   inventory <- config $ max_capacity - cum_demand
-  revenue <- cumsum(prices * pmin(demand, inventory))
+  sales <- pmin(demand, dplyr::lag(inventory, default=config $ max_capacity))
+  revenue <- cumsum(prices * sales)
   tibble(t=seq(0, length(demand) - 1),
          inventory=inventory,
          revenue=revenue,
+         demand=demand,
+         sales=sales,
          price=prices)
 }
 
