@@ -1,22 +1,34 @@
+library(metricsgraphics)
 library(shiny)
+library(scales)
 source("functions.R")
 
 # Parameters
-server <- function(input, output){
+server <- function(input, output, session){
   ## Initialization
   ## ------------------------------------
   state <- do.call(reactiveValues, init_state())
+  timer <- reactiveVal(config $ decision_time)
+
+  observe({
+    invalidateLater(1000, session)
+    isolate({
+      timer(max(timer() - 1, 0))
+    })
+  })
 
   observeEvent(input $ reset, {
     new_state <- init_state(as.integer(input $ seed))
     copy_list(new_state, state)
+    timer(config $ decision_time)
   })
 
   output $ discount <- renderUI({
     last_price <- state $ price_history [length(state $ price_history)]
     valid_prices <- keep(config $ price_levels, ~ .x <= last_price)
     discount_pct <-
-      (max(config $ price_levels) - valid_prices) / max(config $ price_levels)
+      (max(config $ price_levels) - valid_prices) /
+      max(config $ price_levels)
     names(valid_prices) <- percent(discount_pct)
     radioButtons("price", "Discount", choices=valid_prices)
   })
@@ -27,13 +39,18 @@ server <- function(input, output){
   season_over <- reactive(is_season_over(state))
 
   observeEvent(input $ step, {
-    if(!season_over()){
-      state $ price_history <- c(state $ price_history,
-                                 as.numeric(input $ price))
-      if(season_over()){
-        complete_state(state)
+    update_state(state, input $ price)
+    timer(config $ decision_time)
+  })
+
+  observe({
+    timer()
+    isolate({
+      if (timer() == 0 && !season_over()){
+        update_state(state, input $ price)
+        timer(config $ decision_time)
       }
-    }
+    })
   })
 
   ## Output

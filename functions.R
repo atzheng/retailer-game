@@ -6,6 +6,7 @@ config <- list(
   n_prices=4,
   max_capacity=2000,
   price_levels=c(100, 90, 80, 60),
+  decision_time=30,
   lift=c(1.0, 1.3, 1.7, 2.8))
 
 init_state <- function(seed=NULL){
@@ -18,7 +19,6 @@ init_state <- function(seed=NULL){
   noise <- (rerun(config $ n_weeks * config $ n_prices, g $ nextGaussian())
     %>% matrix(ncol=config $ n_weeks) %>% t)
   state <- list(noise=noise, price_history=c(100), scale=scale)
-  state $ max_revenue <- maximum_revenue(state)
   state
 }
 
@@ -82,6 +82,15 @@ complete_state <- function(state){
   state $ price_history <- c(
     state $ price_history,
     rep(state $ price_history[T], config $ n_weeks - T))
+}
+
+update_state <- function(state, price){
+  if(!is_season_over(state)){
+    state $ price_history <- c(state $ price_history, as.numeric(price))
+    if(is_season_over(state)){
+      complete_state(state)
+    }
+  }
 }
 
 copy_list <- function(src, target){
