@@ -33,11 +33,11 @@ eval_prices <- function(state, prices){
 
 maximum_revenue <- function(state){
   (rerun(length(config $ price_levels), seq(0, config $ n_weeks - 1))
-    %>% cross(.filter=function(...) sum(...) != config $ n_weeks - 1)
-    %>% map(~ c(max(config $ price_levels),
-              rep_each(config $ price_levels, .x)))
-    %>% map(partial(eval_prices, state))
-    %>% unlist
+    %>% expand.grid
+    %>% filter(rowSums(.) == config $ n_weeks - 1)
+    %>% apply(1, function(x){
+      with(config, c(max(price_levels), rep_each(price_levels, x))) %>%
+        eval_prices(state, .) })
     %>% max)
 }
 
