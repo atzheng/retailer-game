@@ -14,11 +14,11 @@ server <- function(input, output){
 
   output $ discount <- renderUI({
     last_price <- state $ price_history [length(state $ price_history)]
-    valid_prices <- keep(~ .x < last_price)
-    discount_pct <- max(prices) - valid_prices / max(prices)
+    valid_prices <- keep(config $ price_levels, ~ .x <= last_price)
+    discount_pct <-
+      (max(config $ price_levels) - valid_prices) / max(config $ price_levels)
+    names(valid_prices) <- percent(discount_pct)
     radioButtons("price", "Discount", choices=valid_prices)
-                 ## choiceValues=valid_prices,
-                 ## choiceNames=discount_pct)
   })
 
   ## Event loop
@@ -43,8 +43,8 @@ server <- function(input, output){
       sprintf(paste(
         "The season is over! You earned $%s, out of $%s possible.",
         "Click Reset to try again."),
-        max(history() $ revenue) %>% prettyNum(big.mark=","),
-        state $ max_revenue %>% prettyNum(big.mark=","))
+        max(history() $ revenue) %>% prettyNum(big.mark=",", scientific=FALSE),
+        state $ max_revenue %>% prettyNum(big.mark=",", scientific=FALSE))
     } else {
       "Welcome to the Retailer Game! Choose a price and click Step to simulate."
     }
