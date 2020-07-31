@@ -44,36 +44,31 @@ server <- function(input, output){
         "The season is over! You earned $%s, out of $%s possible.",
         "Click Reset to try again."),
         max(history() $ revenue) %>% prettyNum(big.mark=",", scientific=FALSE),
-        state $ max_revenue %>% prettyNum(big.mark=",", scientific=FALSE))
+        maximum_revenue(state) %>% prettyNum(big.mark=",", scientific=FALSE))
     } else {
-      "Welcome to the Retailer Game! Choose a price and click Step to simulate."
+      sprintf("You have %d s to make a decision!", timer())
     }
   })
 
-  output $ inventory_plot <- renderPlot({
-    (history()
-      %>% ggplot(aes(t, inventory))
-      + theme_minimal()
-      + geom_point()
-      + geom_line()
-      + theme(legend.position="bottom")
-      + ggtitle("Inventory")
-      + coord_cartesian(ylim=c(0, config $ max_capacity), xlim=c(0, config $ n_weeks))
-      + xlab("Weeks")
-      + ylab("Inventory (Units)"))
+  output $ inventory_plot <- renderMetricsgraphics({
+    history() %>%
+      mjs_plot(x=t, y=inventory, linked=TRUE, title="Inventory") %>%
+      mjs_line(interpolate='linear') %>%
+      mjs_axis_x(xax_count=config $ n_weeks,
+                 min_x=0, max_x=config $ n_weeks) %>%
+      mjs_axis_y(show=TRUE, min_y=0, max_y=config $ max_capacity) %>%
+      mjs_labs(x="Weeks", y="Inventory (Units)")
   })
 
-  output $ revenue_plot <- renderPlot({
-    (history()
-      %>% ggplot(aes(t, revenue))
-      + theme_minimal()
-      + geom_point()
-      + geom_line()
-      + theme(legend.position="bottom")
-      + xlab("Weeks")
-      + ggtitle("Revenue")
-      + ylab("Revenue ($)")
-      + coord_cartesian(ylim=c(0, state $ max_revenue), xlim=c(0, config $ n_weeks)))
+  output $ revenue_plot <- renderMetricsgraphics({
+    history() %>%
+      mjs_plot(x=t, y=revenue, linked=TRUE, title="Revenue") %>%
+      mjs_line(interpolate='linear') %>%
+      mjs_axis_x(xax_count=config $ n_weeks,
+                 min_x=0, max_x=config $ n_weeks) %>%
+      mjs_axis_y(show=TRUE, min_y=0,
+                 max_y=with(config, max_capacity * max(price_levels))) %>%
+      mjs_labs(x="Weeks", y="Revenue (Units)")
   })
 
   output $ tbl <- renderDataTable(history()[-1, ])
