@@ -40,26 +40,17 @@ server <- function(input, output, session){
   history <- reactive(summarise_state(scenario, price_history()))
   season_over <- reactive(is_season_over(scenario, price_history()))
 
-  observeEvent(input $ step, {
+  step <- function(){
     if(!season_over()){
       new_history <- update_history(
         scenario, price_history(), input $ price)
       price_history(new_history)
       timer(config $ decision_time)
     }
-  })
+  }
 
-  observe({
-    timer()
-    isolate({
-      if (timer() == 0 && !season_over()){
-        new_history <- update_history(
-          scenario, price_history(), input $ price)
-        price_history(new_history)
-        timer(config $ decision_time)
-      }
-    })
-  })
+  observeEvent(input $ step, step())
+  observe(if (timer() == 0) step())
 
   ## Output
   ## --------------------------------------
