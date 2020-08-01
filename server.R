@@ -1,5 +1,6 @@
 library(metricsgraphics)
 library(shiny)
+library(DT)
 library(scales)
 source("functions.R")
 
@@ -40,10 +41,12 @@ server <- function(input, output, session){
   season_over <- reactive(is_season_over(scenario, price_history()))
 
   observeEvent(input $ step, {
-    new_history <- update_history(
-      scenario, price_history(), input $ price)
-    price_history(new_history)
-    timer(config $ decision_time)
+    if(!season_over()){
+      new_history <- update_history(
+        scenario, price_history(), input $ price)
+      price_history(new_history)
+      timer(config $ decision_time)
+    }
   })
 
   observe({
@@ -92,10 +95,15 @@ server <- function(input, output, session){
                  min_x=0, max_x=config $ n_weeks) %>%
       mjs_axis_y(show=TRUE, min_y=0,
                  max_y=with(config, max_capacity * max(price_levels))) %>%
-      mjs_labs(x="Weeks", y="Revenue (Units)")
+      mjs_labs(x="Weeks", y="Revenue ($)")
   })
 
-  output $ tbl <- renderDataTable(history()[-1, ])
+  output $ tbl <- renderDT({
+    (history()[-1, ]
+      %>% select(-sales)
+      %>% datatable(options=list(dom='t')))
+  })
+
   output $ download <- downloadHandler(
     filename = function() paste0("retailer-seed", input $ seed, ".csv"),
     content = function(file)

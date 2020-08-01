@@ -42,7 +42,6 @@ compute_lift <- function(prices){
 }
 
 compute_demand <- function(scenario, price_history){
-  print(scenario)
   mean_demand <- compute_lift(price_history) * scenario $ scale
   noise <- scenario $ noise [seq_along(price_history),
                              match(price_history,
