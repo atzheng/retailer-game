@@ -10,21 +10,18 @@ server <- function(input, output, session){
   ## ------------------------------------
   # State variables
   price_history <- reactiveVal(max(config $ price_levels))
-  random_seed <- reactiveVal(sample(1e5, 1))
+  timer <- reactiveVal(config $ decision_time)
+
   current_seed <- reactive({
     input $ reset
-    isolate(coalesce(as.numeric(input $ seed), random_seed()))
-  })
-  scenario <- reactive({
-    input $ reset
-    isolate(init_scenario(current_seed()))
+    isolate(coalesce(as.numeric(input $ seed), sample(1e5, 1)))
   })
 
-  timer <- reactiveVal(config $ decision_time)
+  scenario <- reactive(init_scenario(current_seed()))
+
   observeEvent(input $ reset, {
     timer(config $ decision_time)
     price_history(max(config $ price_levels))
-    random_seed(sample(1e5, 1))
   })
 
   observe({

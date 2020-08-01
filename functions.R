@@ -50,7 +50,6 @@ compute_demand <- function(scenario, price_history){
   pmax(mean_demand * 0.2 * noise + mean_demand, 0) %>% as.integer
 }
 
-
 is_season_over <- function(scenario, price_history){
   history <- summarise_state(scenario, price_history)
   (max(history $ t) >= config $ n_weeks
@@ -84,10 +83,4 @@ update_history <- function(scenario, price_history, price){
       new_history
     }
   }
-}
-
-copy_list <- function(src, target){
-    for(name in names(src)){
-      target[[name]] <- src[[name]]
-    }
 }
