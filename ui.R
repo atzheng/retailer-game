@@ -6,6 +6,7 @@ fluidPage(
   sidebarLayout(
     sidebarPanel(
       includeMarkdown("instructions.md"),
+      textOutput("seed"),
       span(textOutput("msg"), style='color:red'),
       tabsetPanel(
         type='tabs',
@@ -15,7 +16,7 @@ fluidPage(
                  actionButton("step", "Step"),
                  downloadButton("download", "Download")),
         tabPanel("Config",
-                 textInput("seed", "Seed", value=sample(1:1e4, 1))))),
+                 textInput("seed", "Seed", value=NULL)))),
     mainPanel(fluidRow(column(6, metricsgraphicsOutput("inventory_plot")),
                        column(6, metricsgraphicsOutput("revenue_plot"))),
               DTOutput("tbl"))))

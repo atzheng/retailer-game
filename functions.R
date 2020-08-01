@@ -11,7 +11,7 @@ config <- list(
 
 init_scenario <- function(seed=NULL){
   # Use Java RNG for backwards compatibility.
-  seed <- `if`(is.null(seed), sample(1:1e4, 1), seed)
+  seed <- `if`(is.null(seed) || is.na(seed), sample(1:1e4, 1), seed)
   .jinit()
   g <- new(J("java.util.Random"), .jlong(seed))
   mean_scale <- 0.7 * config $ max_capacity / config $ n_weeks

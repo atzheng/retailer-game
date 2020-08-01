@@ -10,13 +10,21 @@ server <- function(input, output, session){
   ## ------------------------------------
   # State variables
   price_history <- reactiveVal(max(config $ price_levels))
-  scenario <- do.call(reactiveValues, init_scenario())
+  random_seed <- reactiveVal(sample(1e5, 1))
+  current_seed <- reactive({
+    input $ reset
+    isolate(coalesce(as.numeric(input $ seed), random_seed()))
+  })
+  scenario <- reactive({
+    input $ reset
+    isolate(init_scenario(current_seed()))
+  })
 
   timer <- reactiveVal(config $ decision_time)
   observeEvent(input $ reset, {
     timer(config $ decision_time)
     price_history(max(config $ price_levels))
-    copy_list(init_scenario(input $ seed), scenario)
+    random_seed(sample(1e5, 1))
   })
 
   observe({
@@ -37,13 +45,13 @@ server <- function(input, output, session){
 
   ## Event loop
   ## -------------------------------------
-  history <- reactive(summarise_state(scenario, price_history()))
-  season_over <- reactive(is_season_over(scenario, price_history()))
+  history <- reactive(summarise_state(scenario(), price_history()))
+  season_over <- reactive(is_season_over(scenario(), price_history()))
 
   step <- function(){
     if(!season_over()){
       new_history <- update_history(
-        scenario, price_history(), input $ price)
+        scenario(), price_history(), input $ price)
       price_history(new_history)
       timer(config $ decision_time)
     }
@@ -61,7 +69,7 @@ server <- function(input, output, session){
         "Click Reset to try again."),
         max(history() $ revenue) %>%
         prettyNum(big.mark=",", scientific=FALSE),
-        maximum_revenue(scenario) %>%
+        maximum_revenue(scenario()) %>%
         prettyNum(big.mark=",", scientific=FALSE))
     } else {
       sprintf("You have %d s to make a decision!", timer())
@@ -100,4 +108,8 @@ server <- function(input, output, session){
     content = function(file)
       write.csv(history()[-1, ], file, row.names = FALSE)
   )
+
+  output $ seed <- renderText({
+    sprintf('Using seed: %d', current_seed())
+  })
 }
