@@ -6,7 +6,7 @@ config <- list(
   n_prices=4,
   max_capacity=2000,
   price_levels=c(100, 90, 80, 60),
-  decision_time=30,
+  decision_time=90,
   lift=c(1.0, 1.3, 1.7, 2.8))
 
 init_scenario <- function(seed=NULL){

@@ -97,7 +97,7 @@ server <- function(input, output, session){
   output $ tbl <- renderDT({
     (history()[-1, ]
       %>% select(-sales)
-      %>% datatable(options=list(dom='t')))
+      %>% datatable(options=list(dom='t', paging=FALSE)))
   })
 
   output $ download <- downloadHandler(
