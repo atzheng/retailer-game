@@ -84,3 +84,5 @@ update_history <- function(scenario, price_history, price){
     }
   }
 }
+
+null2na <- function(x) if(is.null(x)) NA else x

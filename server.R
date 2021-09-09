@@ -12,12 +12,14 @@ server <- function(input, output, session){
   price_history <- reactiveVal(max(config $ price_levels))
   timer <- reactiveVal(config $ decision_time)
 
-  get_seed <- parseQueryString(isolate(session$clientData$url_search))[['seed']]
-  random_seed <- if (is.null(get_seed)) sample(1e5, 1) else as.numeric(get_seed)
-  
   current_seed <- reactive({
     input $ reset
-    isolate(coalesce(as.numeric(input $ seed), random_seed))
+    isolate({
+      query_seed <-
+        parseQueryString(session$clientData$url_search)[['seed']] %>%
+        null2na %>% as.numeric
+      coalesce(as.numeric(input $ seed), query_seed, sample(1e5, 1))
+    })
   })
 
   scenario <- reactive(init_scenario(current_seed()))
