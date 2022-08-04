@@ -17,8 +17,8 @@ server <- function(input, output, session){
     isolate({
       query_seed <-
         parseQueryString(session$clientData$url_search)[['seed']] %>%
-        null2na %>% as.numeric
-      coalesce(as.numeric(input $ seed), query_seed, sample(1e5, 1))
+        null2na %>% as.integer
+      coalesce(query_seed, sample(1e5, 1))
     })
   })
 
@@ -34,6 +34,14 @@ server <- function(input, output, session){
     isolate({
       timer(max(timer() - 1, 0))
     })
+  })
+
+  output $ set_seed_button <- renderUI({
+    url <- sprintf("location.href='?seed=%s';",
+                   input $ seed)
+    shiny::actionButton(inputId='seed_setter',
+                        label="Set Seed",
+                        onclick=url)
   })
 
   output $ discount <- renderUI({
@@ -106,7 +114,7 @@ server <- function(input, output, session){
   })
 
   output $ download <- downloadHandler(
-    filename = function() paste0("retailer-seed", input $ seed, ".csv"),
+    filename = function() paste0("retailer-seed", current_seed(), ".csv"),
     content = function(file)
       write.csv(history()[-1, ], file, row.names = FALSE)
   )
