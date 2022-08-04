@@ -1,6 +1,7 @@
 library(metricsgraphics)
 library(DT)
 library(shiny)
+library(markdown)
 
 fluidPage(
   sidebarLayout(

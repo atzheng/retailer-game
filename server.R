@@ -2,6 +2,7 @@ library(metricsgraphics)
 library(shiny)
 library(DT)
 library(scales)
+library(markdown)
 source("functions.R")
 
 # Parameters
