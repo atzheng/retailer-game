@@ -14,13 +14,10 @@ server <- function(input, output, session){
   timer <- reactiveVal(config $ decision_time)
 
   current_seed <- reactive({
-    input $ reset
-    isolate({
-      query_seed <-
-        parseQueryString(session$clientData$url_search)[['seed']] %>%
-        null2na %>% as.integer
-      coalesce(query_seed, sample(1e5, 1))
-    })
+    query_seed <-
+      parseQueryString(session$clientData$url_search)[['seed']] %>%
+      null2na %>% as.integer
+    coalesce(query_seed, sample(1e5, 1))
   })
 
   scenario <- reactive(init_scenario(current_seed()))
@@ -37,12 +34,25 @@ server <- function(input, output, session){
     })
   })
 
+  seed_url <- reactive({
+    suffix <- `if`(is.null(input $ seed), "",
+                   sprintf("?seed=%s", input $ seed))
+    sprintf("location.href='%s';", suffix)
+  })
+
+  output $ seed_input <- renderUI({
+    textInput(inputId='seed', label="Seed", value=current_seed(),
+              width="200px")
+  })
+
   output $ set_seed_button <- renderUI({
-    url <- sprintf("location.href='?seed=%s';",
-                   input $ seed)
-    shiny::actionButton(inputId='seed_setter',
-                        label="Set Seed",
-                        onclick=url)
+    actionButton(inputId='reset', label="Reset", onclick=seed_url())
+  })
+
+  output $ randomize_button <- renderUI({
+    actionButton(inputId='randomize', label="Randomize",
+                 onclick=sprintf("location.href='?seed=%s'",
+                                 sample(1e5, 1)))
   })
 
   output $ discount <- renderUI({
@@ -120,7 +130,4 @@ server <- function(input, output, session){
       write.csv(history()[-1, ], file, row.names = FALSE)
   )
 
-  output $ seed <- renderText({
-    sprintf('Using seed: %d', current_seed())
-  })
 }

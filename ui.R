@@ -7,14 +7,16 @@ fluidPage(
   sidebarLayout(
     sidebarPanel(
       includeMarkdown("instructions.md"),
-      textOutput("seed"),
-      span(textOutput("msg"), style='color:red'),
-      uiOutput("discount"),
-      actionButton("reset", "Reset"),
-      actionButton("step", "Step"),
-      downloadButton("download", "Download"),
-      textInput("seed", "Seed", value=NULL),
-      uiOutput("set_seed_button")
+      fluidRow(
+        column(6,
+               uiOutput("seed_input"),
+               uiOutput("set_seed_button"),
+               uiOutput("randomize_button")),
+        column(6,
+               uiOutput("discount"),
+               actionButton("step", "Step"),
+               downloadButton("download", "Download"))),
+      span(textOutput("msg"), style='color:red')
     ),
     mainPanel(fluidRow(column(6, metricsgraphicsOutput("inventory_plot")),
                        column(6, metricsgraphicsOutput("revenue_plot"))),
